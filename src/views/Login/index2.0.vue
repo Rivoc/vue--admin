@@ -80,12 +80,10 @@
 </template>
 <script>
 import { stripscript, validateEmail, validatePassword, validateVerifyCode } from '@/utils/validator.js'
-import { reactive, ref, onMounted } from '@vue/composition-api'
 export default {
   name: "login",
-  // setup (props, context)
-  setup (props, { refs }) {
-    //校验规则
+  data () {
+    //用户名校验
     var validateUserName = (rule, value, callback) => {
       if (value === '') {
         callback(new Error('请输入用户名'));
@@ -99,7 +97,7 @@ export default {
     //密码校验
     var validatePass = (rule, value, callback) => {
       //数据过滤，重新赋值
-      ruleForm.passWord = stripscript(value)
+      this.ruleForm.passWord = stripscript(value)
       value = stripscript(value)
       if (value === '') {
         callback(new Error('请输入密码'));
@@ -112,13 +110,13 @@ export default {
     //重复密码校验
     var validatePasss = (rule, value, callback) => {
       //如果是登录页面，直接通过（使用v-show的情况下会有bug：登录页面里重复密码只是隐藏起来，验证会不通过导致登录无法提交表单信息出现bug，因此需要多加一个判断）
-      model.value === 'login' && callback();
+      this.model === 'login' && callback();
       //数据过滤，重新赋值
-      ruleForm.passWords = stripscript(value)
+      this.ruleForm.passWords = stripscript(value)
       value = stripscript(value)
       if (value === '') {
         callback(new Error('请再次输入密码'));
-      } else if (value != ruleForm.passWord) {
+      } else if (value != this.ruleForm.passWord) {
         callback(new Error('两次输入的密码不一致'));
       } else {
         callback();
@@ -134,41 +132,36 @@ export default {
         callback();
       }
     }
-
-
-    //声明数据
-    const menuTab = reactive([{ text: "登录", model: "login" }, { text: "注册", model: "register" }])
-    let ruleForm = reactive({
-      userName: '',
-      passWord: '',
-      passWords: '',
-      code: ''
-    })
-    let rules = reactive({
-      userName: [
-        { validator: validateUserName, trigger: 'blur' }
-      ],
-      passWord: [
-        { validator: validatePass, trigger: 'blur' }
-      ],
-      passWords: [
-        { validator: validatePasss, trigger: 'blur' }
-      ],
-      code: [
-        { validator: validateCode, trigger: 'blur' }
-      ]
-    })
-
-    let currentIndex = ref(1)
-    let model = ref('register')
-
-    console.log(menuTab)
-    console.log(model.value)
-
-    onMounted(() => { })
-    // 自定义函数
-    const submitForm = (formName) => {
-      refs[formName].validate((valid) => {
+    return {
+      menuTab: [{ text: "登录", model: "login" }, { text: "注册", model: "register" }],
+      currentIndex: 1,
+      //模块值
+      model: 'register',
+      ruleForm: {
+        userName: '',
+        passWord: '',
+        passWords: '',
+        code: ''
+      },
+      rules: {
+        userName: [
+          { validator: validateUserName, trigger: 'blur' }
+        ],
+        passWord: [
+          { validator: validatePass, trigger: 'blur' }
+        ],
+        passWords: [
+          { validator: validatePasss, trigger: 'blur' }
+        ],
+        code: [
+          { validator: validateCode, trigger: 'blur' }
+        ]
+      }
+    }
+  },
+  methods: {
+    submitForm (formName) {
+      this.$refs[formName].validate((valid) => {
         if (valid) {
           alert('submit!');
         } else {
@@ -176,127 +169,17 @@ export default {
           return false;
         }
       });
-    }
-    const resetForm = (formName) => {
-      refs[formName].resetFields()
-    }
-    const toggleMenu = (index, item) => {
-      model.value = item.model
-      currentIndex.value = index;
-
-      console.log(currentIndex.value);
-
-    }
-    return {
-      menuTab,
-      currentIndex,
-      model,
-      submitForm,
-      resetForm,
-      toggleMenu,
-      rules,
-      ruleForm
+    },
+    resetForm (formName) {
+      this.$refs[formName].resetFields();
+    },
+    toggleMenu (index, item) {
+      this.model = item.model
+      console.log(item)
+      this.currentIndex = index;
+      console.log(index);
     }
   },
-
-  // data () {
-  //   //用户名校验
-  //   var validateUserName = (rule, value, callback) => {
-  //     if (value === '') {
-  //       callback(new Error('请输入用户名'));
-  //     } else if (validateEmail(value)) {
-  //       callback(new Error('邮箱格式不正确'));
-  //     } else {
-  //       callback();
-  //     }
-
-  //   }
-  //   //密码校验
-  //   var validatePass = (rule, value, callback) => {
-  //     //数据过滤，重新赋值
-  //     this.ruleForm.passWord = stripscript(value)
-  //     value = stripscript(value)
-  //     if (value === '') {
-  //       callback(new Error('请输入密码'));
-  //     } else if (validatePassword(value)) {
-  //       callback(new Error('密码格式不正确'));
-  //     } else {
-  //       callback();
-  //     }
-  //   }
-  //   //重复密码校验
-  //   var validatePasss = (rule, value, callback) => {
-  //     //如果是登录页面，直接通过（使用v-show的情况下会有bug：登录页面里重复密码只是隐藏起来，验证会不通过导致登录无法提交表单信息出现bug，因此需要多加一个判断）
-  //     this.model === 'login' && callback();
-  //     //数据过滤，重新赋值
-  //     this.ruleForm.passWords = stripscript(value)
-  //     value = stripscript(value)
-  //     if (value === '') {
-  //       callback(new Error('请再次输入密码'));
-  //     } else if (value != this.ruleForm.passWord) {
-  //       callback(new Error('两次输入的密码不一致'));
-  //     } else {
-  //       callback();
-  //     }
-  //   }
-  //   //验证码校验
-  //   var validateCode = (rule, value, callback) => {
-  //     if (value === '') {
-  //       callback(new Error('请输入验证码'));
-  //     } else if (validateVerifyCode(value)) {
-  //       callback(new Error('验证码格式错误'));
-  //     } else {
-  //       callback();
-  //     }
-  //   }
-  //   return {
-  //     menuTab: [{ text: "登录", model: "login" }, { text: "注册", model: "register" }],
-  //     currentIndex: 1,
-  //     //模块值
-  //     model: 'register',
-  //     ruleForm: {
-  //       userName: '',
-  //       passWord: '',
-  //       passWords: '',
-  //       code: ''
-  //     },
-  //     rules: {
-  //       userName: [
-  //         { validator: validateUserName, trigger: 'blur' }
-  //       ],
-  //       passWord: [
-  //         { validator: validatePass, trigger: 'blur' }
-  //       ],
-  //       passWords: [
-  //         { validator: validatePasss, trigger: 'blur' }
-  //       ],
-  //       code: [
-  //         { validator: validateCode, trigger: 'blur' }
-  //       ]
-  //     }
-  //   }
-  // },
-  // methods: {
-  //   submitForm (formName) {
-  //     this.$refs[formName].validate((valid) => {
-  //       if (valid) {
-  //         alert('submit!');
-  //       } else {
-  //         console.log('error submit!!');
-  //         return false;
-  //       }
-  //     });
-  //   },
-  //   resetForm (formName) {
-  //     this.$refs[formName].resetFields();
-  //   },
-  //   toggleMenu (index, item) {
-  //     this.model = item.model
-  //     console.log(item)
-  //     this.currentIndex = index;
-  //     console.log(index);
-  //   }
-  // }
 
 
 }
