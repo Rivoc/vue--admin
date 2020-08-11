@@ -13,7 +13,7 @@
       </ul>
       <!-- 表单开始 -->
       <el-form
-        :model="ruleForm"
+        :model="loginForm"
         status-icon
         :rules="rules"
         ref="ruleForm"
@@ -51,7 +51,7 @@
           <el-col :span="16">
             <el-form-item label="验证码" prop="code" class="el-form-item_label">
               <el-input
-                v-model.number="ruleForm.code"
+                v-model="ruleForm.code"
                 minlength="6"
                 maxlength="6"
               ></el-input>
@@ -61,18 +61,20 @@
             <el-button
               size="middle"
               type="success"
-              @click="submitForm('ruleForm')"
+              @click="getSms()"
               style="margin-top:18px;width:100%"
-              >获取验证码</el-button
+              :disabled="codeButtonStatus.status"
+              >{{ codeButtonStatus.text }}</el-button
             >
           </el-col>
         </el-row>
 
         <el-button
           type="danger"
-          @click="resetForm('ruleForm')"
+          @click="submitForm('loginForm')"
           class="login_button"
-          >登录</el-button
+          :disabled="loginButtonStatus"
+          >{{ model === "login" ? "登录" : "注册" }}</el-button
         >
       </el-form>
     </div>
@@ -80,11 +82,12 @@
 </template>
 <script>
 import { stripscript, validateEmail, validatePassword, validateVerifyCode } from '@/utils/validator.js'
-import { reactive, ref, onMounted } from '@vue/composition-api'
+import { reactive, ref } from '@vue/composition-api'
+import { GetSms, Register } from '@/api/login.js'
 export default {
   name: "login",
   // setup (props, context)
-  setup (props, { refs }) {
+  setup (props, { refs, root }) {
     //校验规则
     var validateUserName = (rule, value, callback) => {
       if (value === '') {
@@ -158,21 +161,74 @@ export default {
         { validator: validateCode, trigger: 'blur' }
       ]
     })
-
+    /********************************************************************************** */
     let currentIndex = ref(1)
     let model = ref('register')
+    let loginButtonStatus = ref(true)
+    let codeButtonStatus = reactive({
+      status: false,
+      text: '获取验证码'//验证码按钮可用
+    })
+    let timer = ref(null)
 
-    console.log(menuTab)
-    console.log(model.value)
+    /******************************************** */
+    // eslint-disable-next-line no-unused-vars
+    const getSms = () => {
+      if (ruleForm.userName === "") {
+        root.$message.error('用户名不能为空')
+        return false
+      }
+      if (validateEmail(ruleForm.userName)) {
+        root.$message.error('邮箱格式有误')
+        return false
+      }
+      let data = {
+        username: ruleForm.username,
+        module: model.value
+      }
 
-    onMounted(() => { })
-    // 自定义函数
+      //修改验证码按钮状态
+      codeButtonStatus.status = true
+      codeButtonStatus.text = '发送中'
+
+
+      setTimeout(async () => {
+        await GetSms(data)
+        root.$message.success('验证码已发送')
+        //启用登录或注册按钮
+        loginButtonStatus.value = false
+        countDown(60)
+      }, 5000)
+    }
+
+    //倒计时
+    const countDown = (number) => {
+      //60和0消失
+      let time = number
+      timer.value = setInterval(() => {
+        time--
+        if (time === 0) {
+          codeButtonStatus.status = false
+          codeButtonStatus.text = '重新获取'
+          clearInterval(timer.value)
+
+        }
+        codeButtonStatus.text = `倒计时${time}秒`
+      }, 1000)
+    }
     const submitForm = (formName) => {
-      refs[formName].validate((valid) => {
+      refs[formName].validate(async (valid) => {
         if (valid) {
-          alert('submit!');
+          let requestData = {
+            username: ruleForm.username,
+            module: model.value,
+            password: ruleForm.password,
+            code: ruleForm.code
+          }
+          let res = await Register(requestData)
+          root.$message.success(res.data)
         } else {
-          console.log('error submit!!');
+          root.$message.error('登录失败')
           return false;
         }
       });
@@ -183,120 +239,30 @@ export default {
     const toggleMenu = (index, item) => {
       model.value = item.model
       currentIndex.value = index;
-
+      // eslint-disable-next-line no-undef
+      refs[loginForm].resetFields()
       console.log(currentIndex.value);
 
     }
     return {
       menuTab,
       currentIndex,
+      loginButtonStatus,
       model,
       submitForm,
       resetForm,
+      getSms,
       toggleMenu,
       rules,
-      ruleForm
+      ruleForm,
+      codeButtonStatus,
+      timer
+
+
     }
   },
 
-  // data () {
-  //   //用户名校验
-  //   var validateUserName = (rule, value, callback) => {
-  //     if (value === '') {
-  //       callback(new Error('请输入用户名'));
-  //     } else if (validateEmail(value)) {
-  //       callback(new Error('邮箱格式不正确'));
-  //     } else {
-  //       callback();
-  //     }
 
-  //   }
-  //   //密码校验
-  //   var validatePass = (rule, value, callback) => {
-  //     //数据过滤，重新赋值
-  //     this.ruleForm.passWord = stripscript(value)
-  //     value = stripscript(value)
-  //     if (value === '') {
-  //       callback(new Error('请输入密码'));
-  //     } else if (validatePassword(value)) {
-  //       callback(new Error('密码格式不正确'));
-  //     } else {
-  //       callback();
-  //     }
-  //   }
-  //   //重复密码校验
-  //   var validatePasss = (rule, value, callback) => {
-  //     //如果是登录页面，直接通过（使用v-show的情况下会有bug：登录页面里重复密码只是隐藏起来，验证会不通过导致登录无法提交表单信息出现bug，因此需要多加一个判断）
-  //     this.model === 'login' && callback();
-  //     //数据过滤，重新赋值
-  //     this.ruleForm.passWords = stripscript(value)
-  //     value = stripscript(value)
-  //     if (value === '') {
-  //       callback(new Error('请再次输入密码'));
-  //     } else if (value != this.ruleForm.passWord) {
-  //       callback(new Error('两次输入的密码不一致'));
-  //     } else {
-  //       callback();
-  //     }
-  //   }
-  //   //验证码校验
-  //   var validateCode = (rule, value, callback) => {
-  //     if (value === '') {
-  //       callback(new Error('请输入验证码'));
-  //     } else if (validateVerifyCode(value)) {
-  //       callback(new Error('验证码格式错误'));
-  //     } else {
-  //       callback();
-  //     }
-  //   }
-  //   return {
-  //     menuTab: [{ text: "登录", model: "login" }, { text: "注册", model: "register" }],
-  //     currentIndex: 1,
-  //     //模块值
-  //     model: 'register',
-  //     ruleForm: {
-  //       userName: '',
-  //       passWord: '',
-  //       passWords: '',
-  //       code: ''
-  //     },
-  //     rules: {
-  //       userName: [
-  //         { validator: validateUserName, trigger: 'blur' }
-  //       ],
-  //       passWord: [
-  //         { validator: validatePass, trigger: 'blur' }
-  //       ],
-  //       passWords: [
-  //         { validator: validatePasss, trigger: 'blur' }
-  //       ],
-  //       code: [
-  //         { validator: validateCode, trigger: 'blur' }
-  //       ]
-  //     }
-  //   }
-  // },
-  // methods: {
-  //   submitForm (formName) {
-  //     this.$refs[formName].validate((valid) => {
-  //       if (valid) {
-  //         alert('submit!');
-  //       } else {
-  //         console.log('error submit!!');
-  //         return false;
-  //       }
-  //     });
-  //   },
-  //   resetForm (formName) {
-  //     this.$refs[formName].resetFields();
-  //   },
-  //   toggleMenu (index, item) {
-  //     this.model = item.model
-  //     console.log(item)
-  //     this.currentIndex = index;
-  //     console.log(index);
-  //   }
-  // }
 
 
 }

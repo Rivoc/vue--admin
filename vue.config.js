@@ -9,7 +9,7 @@ module.exports = {
   /**
    * webpack配置,see https://github.com/vuejs/vue-cli/blob/dev/docs/webpack.md
    **/
-  chainWebpack: config => {},
+  chainWebpack: config => { },
   configureWebpack: config => {
     config.resolve = {
       // 配置解析别名
@@ -58,13 +58,24 @@ module.exports = {
     https: false, // 编译失败时刷新页面
     hot: true, // 开启热加载
     hotOnly: false,
-    proxy: null, // 设置代理
+    proxy: {
+      '/devApi': {
+        target: 'http://www.web-jshtml.cn/productapi', //API服务器的地址
+        changeOrigin: true,//是否跨域//true为开启代理
+        pathRewrite: {
+          '^/devApi': ''////这里理解成用‘/api’代替target里面的地址，组件中我们调接口时直接用/api代替
+          // 比如我要调用'http://0.0:300/user/add'，直接写‘/api/user/add’即可 代理后地址栏显示/
+
+        }
+
+      }
+    }, // 设置代理
     overlay: {
       // 全屏模式下是否显示脚本错误
       warnings: true,
       errors: true
     },
-    before: app => {}
+    before: app => { }
   },
   /**
    * 第三方插件配置
